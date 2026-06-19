@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>台灣印花稅計算工具 V4</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<style>
+:root{
+  --bd:#1F4E79;--bm:#2E75B6;--bl:#D6E4F0;--bp:#EBF5FB;
+  --gd:#1E5631;--gl:#D5F5E3;--gm:#27AE60;
+  --od:#7E5109;--ol:#FDEBD0;--om:#E67E22;
+  --rd:#C0392B;--rl:#FADBD8;
+  --pu:#6C3483;--pul:#F4ECF7;
+  --grey:#F8F9FA;--border:#DEE2E6;--text:#2C3E50;
+  --shadow:0 2px 8px rgba(0,0,0,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#F0F4F8;color:var(--text);min-height:100vh;overflow-x:hidden}
+
+.app-header{background:linear-gradient(135deg,var(--bd),var(--bm));color:#fff;
+  padding:14px 24px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  box-shadow:0 4px 12px rgba(31,78,121,.3);position:sticky;top:0;z-index:100}
+.app-header .icon{font-size:1.8rem;flex-shrink:0}
+.app-header .htext{flex:1;min-width:0}
+.app-header h1{font-size:1.3rem;font-weight:700}
+.app-header p{font-size:.76rem;opacity:.85;margin-top:2px}
+.ver{background:rgba(255,255,255,.25);padding:2px 10px;border-radius:12px;font-size:.73rem;font-weight:700;margin-left:8px}
+.expiry-bell{background:rgba(230,126,34,.92);color:#fff;border:none;border-radius:20px;
+  padding:7px 14px;font-size:.8rem;font-weight:700;cursor:pointer;flex-shrink:0;
+  display:none;align-items:center;gap:7px;white-space:nowrap;touch-action:manipulation}
+.expiry-bell:hover{background:var(--om)}
+.bell-num{background:#fff;color:var(--od);border-radius:10px;padding:1px 7px;font-size:.72rem;font-weight:800}
+
+.container{max-width:1200px;margin:0 auto;padding:18px 14px;
+  display:grid;grid-template-columns:460px 1fr;gap:18px}
+@media(max-width:960px){.container{grid-template-columns:1fr}}
+
+.card{background:#fff;border-radius:12px;box-shadow:var(--shadow);border:1px solid var(--border);overflow:hidden}
+.ch{padding:11px 17px;font-weight:700;font-size:.92rem;display:flex;align-items:center;gap:7px;color:#fff}
+.ch.blue{background:var(--bd)}.ch.green{background:var(--gd)}
+.ch.orange{background:var(--od)}.ch.purple{background:var(--pu)}
+.cb{padding:16px}
+.step{display:flex;align-items:center;gap:7px;margin-bottom:9px}
+.snum{width:22px;height:22px;border-radius:50%;background:var(--bd);color:#fff;
+  font-size:.72rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.stxt{font-size:.72rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.7px}
+hr.dv{border:none;border-top:1px solid var(--border);margin:13px 0}
+
+/* Edit banner */
+.edit-banner{background:var(--ol);border:2px solid var(--om);border-radius:10px;
+  padding:11px 14px;margin-bottom:14px;display:none}
+.eb-row{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.eb-title{font-weight:700;color:var(--od);font-size:.9rem;display:flex;align-items:center;gap:6px}
+.eb-no{background:#fff;color:var(--od);border:1px solid var(--om);border-radius:6px;
+  padding:1px 8px;font-size:.78rem;font-weight:700}
+.eb-note{font-size:.76rem;color:var(--od);margin-top:5px;line-height:1.55}
+.eb-cancel{background:#fff;color:var(--od);border:1.5px solid var(--om);border-radius:7px;
+  padding:5px 12px;font-size:.78rem;font-weight:600;cursor:pointer;margin-top:7px;min-height:34px;touch-action:manipulation}
+.eb-cancel:hover{background:var(--rl);border-color:var(--rd);color:var(--rd)}
+
+/* Upload */
+.uz{border:2.5px dashed var(--bm);border-radius:10px;padding:18px 14px;
+  text-align:center;cursor:pointer;transition:all .2s;background:var(--bp);position:relative}
+.uz:hover,.uz.drag{border-color:var(--bd);background:#DBEAFE}
+.uz.ok{border-color:var(--gd);background:var(--gl)}
+.uz input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.uz .ui{font-size:1.8rem;display:block;margin-bottom:5px}
+.uz p{font-size:.82rem;color:#555}.uz small{font-size:.72rem;color:#999}
+.prog{height:3px;background:var(--bl);border-radius:3px;margin-top:6px;display:none}
+.progf{height:100%;background:var(--bm);border-radius:3px;transition:width .3s}
+.spin-row{display:none;align-items:center;gap:7px;padding:7px 0;font-size:.8rem;color:var(--bm)}
+.spin{width:15px;height:15px;border:2px solid var(--bl);border-top-color:var(--bm);
+  border-radius:50%;animation:rot .7s linear infinite;flex-shrink:0}
+@keyframes rot{to{transform:rotate(360deg)}}
+
+.ab{border-radius:8px;padding:10px 13px;margin-top:9px;display:none;font-size:.82rem}
+.ab.ok{background:var(--gl);border:1.5px solid var(--gd);color:var(--gd)}
+.ab.warn{background:var(--ol);border:1.5px solid var(--om);color:var(--od)}
+.ab.info{background:var(--bp);border:1.5px solid var(--bm);color:var(--bd)}
+.ab .abt{font-weight:700;margin-bottom:3px;font-size:.86rem}
+.ab .abd{font-size:.76rem;opacity:.9;margin-top:2px}
+.party-detected{background:var(--gl);border:1.5px solid var(--gm);border-radius:8px;
+  padding:9px 13px;margin-top:8px;display:none;font-size:.8rem}
+.party-detected .pdt{font-weight:700;color:var(--gd);margin-bottom:5px}
+.party-tag{display:inline-flex;align-items:center;gap:4px;background:#fff;
+  border:1px solid var(--gd);border-radius:12px;padding:2px 10px;margin:2px 3px;
+  font-size:.75rem;font-weight:600;color:var(--gd)}
+.img-prev{max-width:100%;max-height:180px;border-radius:6px;border:1px solid var(--border);
+  margin-top:8px;object-fit:contain;display:block;margin-left:auto;margin-right:auto}
+
+/* Type buttons */
+.tgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tbtn{border:2px solid var(--border);border-radius:10px;padding:10px 7px;cursor:pointer;
+  text-align:center;transition:all .2s;background:#fff;font-size:.78rem;font-weight:600;
+  color:#555;position:relative;min-height:72px;touch-action:manipulation}
+.tbtn:hover{border-color:var(--bm);background:var(--bp)}
+.tbtn.active{border-color:var(--bd);background:var(--bd);color:#fff}
+.tbtn.auto{border-color:var(--gd);background:var(--gl);color:var(--gd)}
+.tbtn.auto.active{background:var(--gd);color:#fff}
+.tbtn .ti{font-size:1.25rem;display:block;margin-bottom:3px}
+.tbtn .tr{font-size:.7rem;opacity:.8;font-weight:400}
+.abadge{position:absolute;top:-6px;right:-6px;background:var(--gd);color:#fff;
+  font-size:.58rem;padding:1px 5px;border-radius:8px;font-weight:700}
+
+/* Form */
+.fg{margin-bottom:13px}
+label{display:block;font-size:.8rem;font-weight:600;color:var(--bd);margin-bottom:4px}
+label .req{color:var(--rd);margin-left:2px}
+label .opt{color:#aaa;font-weight:400;font-size:.72rem;margin-left:3px}
+input[type=text],input[type=number],input[type=date],select,textarea{
+  width:100%;padding:9px 10px;border:1.5px solid var(--border);border-radius:7px;
+  font-size:.9rem;color:var(--text);transition:border-color .2s,box-shadow .2s;
+  background:#fff;-webkit-appearance:none;appearance:none}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--bm);box-shadow:0 0 0 3px rgba(46,117,182,.14)}
+input.err,select.err{border-color:var(--rd)!important;box-shadow:0 0 0 3px rgba(192,57,43,.12)!important}
+input[readonly]{background:#F8F9FA;color:#555}
+textarea{resize:vertical;min-height:52px}
+.tip{font-size:.7rem;color:#888;margin-top:3px;line-height:1.5}
+.date-range{display:grid;grid-template-columns:1fr 24px 1fr;gap:6px;align-items:end}
+.dr-sep{color:#aaa;font-size:.85rem;text-align:center;line-height:1;padding-bottom:12px}
+
+/* Counterparties */
+.cplist{display:flex;flex-direction:column;gap:7px}
+.cprow{display:flex;gap:6px;align-items:center}
+.cprole{width:70px;flex-shrink:0;font-size:.82rem}
+.cpinput{flex:1;min-width:0}
+.cpdel{width:34px;height:34px;min-width:34px;border:none;border-radius:6px;cursor:pointer;
+  background:var(--rl);color:var(--rd);font-size:.9rem;display:flex;align-items:center;
+  justify-content:center;flex-shrink:0;transition:background .15s;touch-action:manipulation}
+.cpdel:hover{background:var(--rd);color:#fff}
+.cpadd{margin-top:5px;background:var(--bp);border:1.5px dashed var(--bm);border-radius:7px;
+  padding:7px;color:var(--bd);font-size:.79rem;font-weight:600;cursor:pointer;width:100%;
+  transition:all .15s;display:flex;align-items:center;justify-content:center;gap:5px;min-height:40px;touch-action:manipulation}
+.cpadd:hover{background:var(--bl)}.cpadd:disabled{opacity:.4;cursor:not-allowed}
+
+/* Amount */
+.amt-group{background:var(--grey);border:1px solid var(--border);border-radius:9px;padding:12px}
+.amt-lbl{font-size:.78rem;font-weight:600;color:var(--bd);margin-bottom:3px}
+.amt-auto{background:#F8F9FA;color:#555;font-style:italic}
+.tax-base-row{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+.tax-base-row label{display:flex;align-items:center;gap:5px;cursor:pointer;font-weight:500;font-size:.82rem;color:var(--text);margin-bottom:0}
+.tax-base-row input[type=radio]{width:16px;height:16px;accent-color:var(--bd);flex-shrink:0}
+.cur-row{display:flex;gap:7px}
+.cur-row input{flex:1}.cur-row select{width:90px;flex-shrink:0}
+
+/* Exempt */
+.exgrid{background:var(--grey);border-radius:8px;padding:9px 11px;display:flex;flex-direction:column;gap:6px}
+.exitem label{display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-weight:400;font-size:.8rem;color:var(--text);line-height:1.45;margin-bottom:0}
+.exitem input[type=checkbox]{margin-top:2px;flex-shrink:0;width:15px;height:15px;accent-color:var(--gd)}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;
+  padding:9px 18px;border:none;border-radius:8px;font-size:.88rem;font-weight:600;
+  cursor:pointer;transition:all .2s;min-height:44px;touch-action:manipulation}
+.btn-p{background:var(--bd);color:#fff}.btn-p:hover{background:var(--bm)}
+.btn-s{background:var(--gd);color:#fff}.btn-s:hover{background:#156e3d}
+.btn-d{background:var(--rd);color:#fff}.btn-d:hover{background:#A93226}
+.btn-o{background:#fff;color:var(--bd);border:2px solid var(--bd)}.btn-o:hover{background:var(--bp)}
+.btn-w{background:var(--om);color:#fff}.btn-w:hover{background:var(--od)}
+.btn-sm{padding:6px 12px;font-size:.78rem;min-height:36px}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+
+/* Result */
+.rp{border-radius:10px;padding:15px;margin-top:12px;border:2px solid transparent;display:none}
+.rp.tax{background:var(--bp);border-color:var(--bm)}.rp.ex{background:var(--gl);border-color:var(--gd)}
+.rt{font-size:1rem;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:7px}
+.ra{font-size:1.7rem;font-weight:800;color:var(--bd)}
+.rd table{width:100%;border-collapse:collapse;margin-top:6px;font-size:.8rem}
+.rd td{padding:5px 7px;border-bottom:1px solid #ddd}
+.rd td:first-child{font-weight:600;color:var(--bd);width:50%}
+.badge{display:inline-block;padding:2px 9px;border-radius:14px;font-size:.73rem;font-weight:700}
+.bt{background:var(--bd);color:#fff}.be{background:var(--gd);color:#fff}
+
+.callout{background:var(--bp);border-left:4px solid var(--bd);border-radius:0 7px 7px 0;padding:9px 12px;margin:9px 0;font-size:.8rem;color:var(--bd);line-height:1.55}
+.callout.or{background:var(--ol);border-color:var(--od);color:var(--od)}
+
+/* Stats */
+.right-col>*+*{margin-top:18px}
+.stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:9px}
+@media(max-width:780px){.stats-row{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:420px){.stats-row{grid-template-columns:repeat(2,1fr)}}
+.sc{background:var(--bp);border-radius:8px;padding:11px 8px;text-align:center;border:1px solid #BDD7EE}
+.sc.warn{background:var(--ol);border-color:var(--om)}.sc.warn .sn{color:var(--od)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.sc.warn.blink .sn{animation:pulse 1.4s ease-in-out infinite}
+.sn{font-size:1.25rem;font-weight:800;color:var(--bd)}.sl{font-size:.68rem;color:#555;margin-top:2px;line-height:1.3}
+
+/* Filter */
+.fbar{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
+.fbar select{flex:1;min-width:90px;max-width:130px;font-size:.79rem}
+.fbar input[type=text]{flex:1;min-width:100px;max-width:145px;font-size:.79rem}
+
+/* Table */
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:6px}
+table.rec{width:100%;border-collapse:collapse;font-size:.76rem;min-width:980px}
+table.rec th{background:var(--bd);color:#fff;padding:8px 7px;text-align:left;white-space:nowrap}
+table.rec td{padding:7px 7px;border-bottom:1px solid var(--border);vertical-align:middle}
+table.rec tr:hover td{background:var(--bp)}
+table.rec .am{text-align:right;font-weight:600;font-family:monospace}
+table.rec .ta{color:var(--bd);font-weight:700}
+table.rec .exrow td{color:#aaa}
+table.rec .exp-warn td{background:#FFFBF0}
+table.rec .exp-warn:hover td{background:#FFF3CC}
+table.rec .exp-crit td{background:#FFF5F5}
+table.rec .exp-crit:hover td{background:#FFE8E8}
+table.rec .editing-row td{background:#F4ECF7!important;outline:2px solid var(--pu)}
+.exp-badge{display:inline-block;padding:2px 7px;border-radius:10px;font-size:.67rem;font-weight:700;white-space:nowrap}
+.exp-badge.w60{background:var(--ol);color:var(--od)}.exp-badge.w30{background:var(--rl);color:var(--rd)}
+.exp-badge.expired{background:#555;color:#fff}
+/* Table action buttons */
+.tact{display:flex;gap:3px;align-items:center}
+.iBtn{background:none;border:none;cursor:pointer;border-radius:5px;padding:3px 5px;font-size:1rem;
+  min-width:28px;min-height:28px;display:flex;align-items:center;justify-content:center;touch-action:manipulation;transition:background .15s}
+.iBtn.edit:hover{background:var(--pul)}
+.iBtn.hist:hover{background:var(--bp)}
+.iBtn.del:hover{background:var(--rl)}
+.mod-badge{display:inline-block;padding:1px 6px;border-radius:8px;font-size:.65rem;
+  font-weight:700;background:var(--pul);color:var(--pu);margin-left:3px;white-space:nowrap}
+
+.empty{text-align:center;padding:34px 14px;color:#ccc}
+.empty .ei{font-size:2.5rem;display:block;margin-bottom:8px}
+
+table.ref{width:100%;border-collapse:collapse;font-size:.8rem}
+table.ref th{background:var(--bd);color:#fff;padding:7px 9px;text-align:left}
+table.ref td{padding:7px 9px;border-bottom:1px solid var(--border)}
+table.ref tr:nth-child(even) td{background:var(--bp)}
+
+/* Modals */
+.modal-overlay{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);
+  display:none;align-items:center;justify-content:center;padding:16px}
+.modal-overlay.show{display:flex}
+.modal-box{background:#fff;border-radius:16px;max-width:540px;width:100%;
+  box-shadow:0 12px 40px rgba(0,0,0,.28);overflow:hidden;max-height:88vh;display:flex;flex-direction:column}
+.modal-head{color:#fff;padding:15px 18px;display:flex;align-items:center;gap:11px;flex-shrink:0}
+.modal-head.orange{background:var(--om)}.modal-head.blue{background:var(--bd)}
+.modal-head .mh-icon{font-size:1.5rem}
+.modal-head .mh-title{font-weight:700;font-size:1rem}
+.modal-head .mh-sub{font-size:.76rem;opacity:.9;margin-top:2px}
+.modal-body{padding:4px 18px 8px;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch}
+.modal-footer{padding:12px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;flex-shrink:0}
+
+/* Expiry modal */
+.exp-item{padding:12px 0;border-bottom:1px solid #F0F0F0}.exp-item:last-child{border-bottom:none}
+.exp-item-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.exp-item-no{font-weight:700;color:var(--bd);font-size:.9rem}
+.exp-days{padding:3px 11px;border-radius:12px;font-size:.75rem;font-weight:700}
+.exp-days.warn{background:var(--ol);color:var(--od)}.exp-days.crit{background:var(--rl);color:var(--rd)}.exp-days.past{background:#eee;color:#555}
+.exp-item-name{font-size:.8rem;color:#555;margin-top:3px}
+.exp-item-info{font-size:.75rem;color:#999;margin-top:2px;line-height:1.5}
+
+/* History modal */
+.hist-timeline{padding:8px 0}
+.hist-entry{display:flex;gap:12px}
+.hist-line{display:flex;flex-direction:column;align-items:center;flex-shrink:0}
+.hist-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;margin-top:3px}
+.hist-dot.created{background:var(--gd)}.hist-dot.modified{background:var(--pu)}
+.hist-connector{width:2px;background:#E0E0E0;flex:1;margin:3px 0;min-height:16px}
+.hist-content{flex:1;padding-bottom:16px;min-width:0}
+.hist-header{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:6px}
+.hist-time{font-size:.75rem;color:#888}
+.hist-action-badge{padding:2px 9px;border-radius:10px;font-size:.72rem;font-weight:700}
+.hist-action-badge.created{background:var(--gl);color:var(--gd)}
+.hist-action-badge.modified{background:var(--pul);color:var(--pu)}
+.hist-latest{background:var(--bd);color:#fff;padding:1px 7px;border-radius:8px;font-size:.66rem;font-weight:700}
+.hist-changes,.hist-snapshot{border:1px solid var(--border);border-radius:7px;overflow:hidden;font-size:.78rem}
+.hist-change,.snap-row{display:grid;grid-template-columns:90px 1fr;border-bottom:1px solid var(--border)}
+.hist-change:last-child,.snap-row:last-child{border-bottom:none}
+.hist-field,.snap-k{padding:6px 8px;background:var(--grey);font-weight:600;color:var(--bd);word-break:break-word;font-size:.76rem}
+.hist-vals,.snap-v{padding:6px 8px;word-break:break-word}
+.hist-from{color:var(--rd);text-decoration:line-through;font-size:.74rem;display:block}
+.hist-to{color:var(--gd);font-weight:600;display:block;margin-top:1px}
+.no-changes{padding:8px;color:#aaa;font-size:.78rem;font-style:italic}
+
+@keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.fi{animation:fi .3s ease}
+
+/* Mobile */
+@media(max-width:640px){
+  .app-header{padding:10px 14px;gap:8px}
+  .app-header h1{font-size:1rem}.app-header p{display:none}
+  .expiry-bell{padding:5px 10px;font-size:.74rem}
+  .container{padding:10px 8px;gap:12px}.cb{padding:12px 10px}.ch{padding:9px 12px;font-size:.85rem}
+  input[type=text],input[type=number],input[type=date],select,textarea{font-size:16px!important;padding:10px 10px}
+  .tgrid{gap:6px}.tbtn{padding:8px 5px;font-size:.73rem;min-height:68px}.tbtn .ti{font-size:1.1rem}
+  .date-range{grid-template-columns:1fr;gap:5px}.dr-sep{display:none}
+  .cprole{width:72px}.cpdel{width:38px;height:38px;min-width:38px}
+  .btnrow{gap:6px}.btn-p,.btn-o{flex:1}
+  .fbar{flex-direction:column;align-items:stretch}
+  .fbar select,.fbar input[type=text]{max-width:100%;width:100%}
+  .fbar .btn{width:100%}
+  table.rec{font-size:.72rem;min-width:860px}
+  table.rec th,table.rec td{padding:6px 5px}
+  .stats-row{grid-template-columns:repeat(2,1fr)}.sn{font-size:1.1rem}
+  .modal-overlay.show{align-items:flex-end;padding:0}
+  .modal-box{border-radius:20px 20px 0 0;max-height:85vh}
+  .hist-change,.snap-row{grid-template-columns:78px 1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <span class="icon">🧾</span>
+  <div class="htext">
+    <h1>台灣印花稅計算工具 <span class="ver">V4.0</span></h1>
+    <p>依中華民國印花稅法｜AI辨識往來對象｜合約到期提醒｜記錄編輯 ＆ 修改歷程追蹤</p>
+  </div>
+  <button class="expiry-bell" id="expiryBell" onclick="showExpiryModal()">
+    🔔 <span class="bell-num" id="bellCount">0</span> 份即將到期
+  </button>
+</div>
+
+<!-- Expiry Modal -->
+<div id="expiryOverlay" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-head orange">
+      <span class="mh-icon">⏰</span>
+      <div><div class="mh-title">合約到期提醒</div>
+      <div class="mh-sub">以下合約將於 60 天內到期，請及早安排</div></div>
+    </div>
+    <div class="modal-body" id="expiryList"></div>
+    <div class="modal-footer"><button class="btn btn-p btn-sm" onclick="closeExpiryModal()">我知道了</button></div>
+  </div>
+</div>
+
+<!-- History Modal -->
+<div id="histOverlay" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-head blue">
+      <span class="mh-icon">📋</span>
+      <div><div class="mh-title">修改歷程</div>
+      <div class="mh-sub" id="histSubtitle">—</div></div>
+    </div>
+    <div class="modal-body"><div class="hist-timeline" id="histTimeline"></div></div>
+    <div class="modal-footer"><button class="btn btn-p btn-sm" onclick="closeHistModal()">關閉</button></div>
+  </div>
+</div>
+
+<div class="container">
+<!-- LEFT -->
+<div>
+<div class="card">
+  <div class="ch purple">📎 應稅判斷與計算</div>
+  <div class="cb">
+
+    <!-- Edit banner -->
+    <div class="edit-banner" id="editBanner">
+      <div class="eb-row">
+        <div class="eb-title">✏️ 修改模式 &nbsp;合約：<span class="eb-no" id="editBannerNo">—</span></div>
+        <button class="eb-cancel" onclick="cancelEdit()">✕ 取消修改</button>
+      </div>
+      <div class="eb-note">請修改下方欄位 → 重新點擊「計算應納稅額」→ 點擊「✏️ 更新記錄」，系統將自動保存修改歷程。</div>
+    </div>
+
+    <div class="step"><span class="snum">1</span><span class="stxt">上傳憑證文件 — 自動辨識類型與往來對象</span></div>
+    <div class="uz" id="uz" ondragover="dOver(event)" ondragleave="dLeave(event)" ondrop="dDrop(event)">
+      <input type="file" id="fi" accept=".pdf,.jpg,.jpeg,.png,.docx,.doc" onchange="onFile(event)">
+      <span class="ui">📂</span>
+      <p id="uzTxt">拖曳或點擊上傳憑證（PDF / JPG / PNG / DOCX）</p>
+      <small>上傳後自動辨識憑證類型、甲方乙方等往來對象</small>
+    </div>
+    <div class="prog" id="prog"><div class="progf" id="progf"></div></div>
+    <div class="spin-row" id="spinRow"><div class="spin"></div><span id="spinTxt">解析中…</span></div>
+    <div class="ab" id="ab"><div class="abt" id="abt"></div><div class="abd" id="abd"></div></div>
+    <img id="imgPrev" class="img-prev" style="display:none" alt="預覽">
+    <div class="party-detected" id="partyBox">
+      <div class="pdt">🔍 偵測到往來對象 — 已自動填入，如有錯誤請手動修改</div>
+      <div id="partyTags"></div>
+    </div>
+
+    <hr class="dv">
+    <div class="step"><span class="snum">2</span><span class="stxt">選擇憑證類型 <span style="color:var(--rd)">*</span></span></div>
+    <div class="tgrid" id="tgrid">
+      <button class="tbtn" data-type="receipt" onclick="selType('receipt',this)"><span class="ti">🧾</span>銀錢收據<br><span class="tr">稅率 4‰</span></button>
+      <button class="tbtn" data-type="movable" onclick="selType('movable',this)"><span class="ti">📦</span>買賣動產契據<br><span class="tr">稅率 1‰</span></button>
+      <button class="tbtn" data-type="contract" onclick="selType('contract',this)"><span class="ti">🔨</span>承攬契據<br><span class="tr">稅率 1‰</span></button>
+      <button class="tbtn" data-type="realestate" onclick="selType('realestate',this)"><span class="ti">🏠</span>典賣/讓與不動產<br><span class="tr">稅率 1‰</span></button>
+    </div>
+
+    <hr class="dv">
+    <div class="step"><span class="snum">3</span><span class="stxt">填寫憑證資訊</span></div>
+
+    <div class="fg"><label>合約編號 <span class="req">*</span></label><input type="text" id="contractNo" placeholder="例：CTR-2026-001"></div>
+    <div class="fg"><label>憑證名稱 / 摘要 <span class="opt">選填</span></label><input type="text" id="docName" placeholder="例：工程承攬合約書、銷售收據…"></div>
+    <div class="fg"><label>書立 / 取得日期 <span class="req">*</span></label><input type="date" id="docDate"></div>
+    <div class="fg">
+      <label>合約期間 <span class="opt">選填｜填寫到期日可啟用自動提醒</span></label>
+      <div class="date-range">
+        <div><div class="amt-lbl">起始日</div><input type="date" id="contractStart"></div>
+        <div class="dr-sep">至</div>
+        <div><div class="amt-lbl">到期日 🔔</div><input type="date" id="contractEnd"></div>
+      </div>
+      <p class="tip">🔔 到期前 <b>60 天</b>自動彈出提醒；前 <b>30 天</b>顯示紅色警示</p>
+    </div>
+    <div class="fg">
+      <label>往來對象 <span class="req">*</span> <span class="opt">最多4個</span></label>
+      <div class="cplist" id="cplist">
+        <div class="cprow">
+          <select class="cprole"><option>甲方</option><option>乙方</option><option>丙方</option><option>丁方</option><option>其他</option></select>
+          <input type="text" class="cpinput" placeholder="公司或個人名稱">
+        </div>
+      </div>
+      <button class="cpadd" id="cpadd" onclick="addCP()">➕ 新增往來對象</button>
+      <p class="tip" id="cpcnt">目前 1 個往來對象（最多4個）</p>
+    </div>
+
+    <div class="fg">
+      <label>憑證金額 <span class="req">*</span></label>
+      <div class="amt-group">
+        <div class="fg" style="margin-bottom:10px">
+          <div class="amt-lbl">幣別</div>
+          <div class="cur-row">
+            <select id="currency" onchange="updCur()">
+              <option value="TWD">TWD（新台幣）</option><option value="USD">USD</option>
+              <option value="EUR">EUR</option><option value="JPY">JPY</option>
+              <option value="CNY">CNY</option><option value="HKD">HKD</option>
+              <option value="PHP">PHP（菲律賓披索）</option><option value="OTHER">其他</option>
+            </select>
+          </div>
+        </div>
+        <div id="rateRow" style="display:none;margin-bottom:10px">
+          <div class="amt-lbl">匯率（1 外幣 = ? NTD）</div>
+          <input type="number" id="rate" min="0" step="0.0001" placeholder="例：31.50" oninput="calcAmt()">
+          <p class="tip">請依書立日中央銀行掛牌匯率</p>
+        </div>
+        <div id="otherCurRow" style="display:none;margin-bottom:10px">
+          <div class="amt-lbl">幣別名稱</div><input type="text" id="otherCurName" placeholder="例：SGD、AUD…">
+        </div>
+        <div class="fg" style="margin-bottom:8px">
+          <div class="amt-lbl">① 未稅金額（手動填入）</div>
+          <input type="number" id="amtPre" min="0" step="0.01" placeholder="0.00" oninput="calcAmt()">
+        </div>
+        <div class="fg" style="margin-bottom:8px">
+          <div class="amt-lbl">② 營業稅（5%，自動計算）</div>
+          <input type="number" id="amtVat" readonly class="amt-auto" placeholder="—">
+        </div>
+        <div class="fg" style="margin-bottom:8px">
+          <div class="amt-lbl">③ 含稅金額（自動計算）= ① + ②</div>
+          <input type="number" id="amtTotal" readonly class="amt-auto" placeholder="—">
+        </div>
+        <div class="tax-base-row">
+          <span style="font-size:.78rem;font-weight:600;color:var(--bd);margin-right:4px">計稅基礎：</span>
+          <label><input type="radio" name="taxBase" value="total" checked onchange="calcAmt()"> 含稅金額（建議）</label>
+          <label><input type="radio" name="taxBase" value="pre" onchange="calcAmt()"> 未稅金額</label>
+        </div>
+        <p class="tip" style="margin-top:5px">依印花稅法，以憑證所載金額為準。合約載明含稅總額請選「含稅金額」；僅載未稅金額請選「未稅金額」。</p>
+        <div id="effAmtBox" style="display:none;margin-top:8px;padding:7px 11px;background:#fff;
+          border-radius:6px;border:1px solid var(--bd);font-size:.82rem;color:var(--bd)">
+          計稅基礎（NTD）：<strong id="effAmtVal">—</strong>
+        </div>
+      </div>
+    </div>
+
+    <div class="fg">
+      <label>免稅項目核對（§6）</label>
+      <div class="exgrid">
+        <div class="exitem"><label><input type="checkbox" id="ex1">各級政府機關書立</label></div>
+        <div class="exitem"><label><input type="checkbox" id="ex2">依法登記之教育、文化、公益、慈善機關（團體）</label></div>
+        <div class="exitem"><label><input type="checkbox" id="ex3">農場、林場、漁場、牧場及農業合作社</label></div>
+        <div class="exitem"><label><input type="checkbox" id="ex4">消費合作社對其社員交易</label></div>
+        <div class="exitem"><label><input type="checkbox" id="ex5">工廠、礦場就其自製產品在廠礦內銷售</label></div>
+        <div class="exitem"><label><input type="checkbox" id="ex6">日用飲食品（米、麥、蔬菜、魚、肉等）小額交易</label></div>
+      </div>
+      <p class="tip">勾選任一項即符合免稅條件</p>
+    </div>
+    <div class="fg"><label>備註 <span class="opt">選填</span></label><textarea id="remarks" placeholder="補充說明、合約摘要等"></textarea></div>
+
+    <div class="btnrow">
+      <button class="btn btn-p" onclick="calc()">⚡ 計算應納稅額</button>
+      <button class="btn btn-o" onclick="reset()">↺ 清除重填</button>
+    </div>
+
+    <div class="rp" id="rp">
+      <div class="rt" id="rt"></div>
+      <div id="rb"></div>
+      <div class="btnrow" style="margin-top:12px">
+        <button class="btn btn-s btn-sm" id="saveBtn" onclick="saveOrUpdate()">➕ 加入記錄</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<!-- RIGHT -->
+<div class="right-col">
+  <div class="card">
+    <div class="ch green">📊 統計總覽</div>
+    <div class="cb">
+      <div class="stats-row">
+        <div class="sc"><div class="sn" id="sTotal">0</div><div class="sl">筆記錄</div></div>
+        <div class="sc"><div class="sn" id="sTax">0</div><div class="sl">應稅筆數</div></div>
+        <div class="sc"><div class="sn" id="sEx">0</div><div class="sl">免稅筆數</div></div>
+        <div class="sc"><div class="sn" id="sSum">NT$0</div><div class="sl">應納稅額合計</div></div>
+        <div class="sc warn" id="scExpiry"><div class="sn" id="sExpiry">0</div><div class="sl">🔔 60天內到期</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ch orange">🗂 計算記錄</div>
+    <div class="cb">
+      <div class="fbar">
+        <select id="ft" onchange="renderTbl()"><option value="">全部類型</option><option value="receipt">銀錢收據</option><option value="movable">買賣動產</option><option value="contract">承攬契據</option><option value="realestate">不動產</option></select>
+        <select id="fs" onchange="renderTbl()"><option value="">全部結果</option><option value="taxable">應稅</option><option value="exempt">免稅</option></select>
+        <select id="fe" onchange="renderTbl()"><option value="">全部期限</option><option value="exp60">60天內到期</option><option value="exp30">30天內到期</option></select>
+        <input type="text" id="fq" placeholder="搜尋合約編號/對象…" oninput="renderTbl()">
+        <button class="btn btn-s btn-sm" onclick="expXlsx()">📥 匯出 Excel</button>
+        <button class="btn btn-d btn-sm" onclick="clearAll()">🗑 清除全部</button>
+      </div>
+      <div class="tw">
+        <table class="rec">
+          <thead><tr>
+            <th>合約編號</th><th>書立日</th><th>起始日</th><th>到期日</th>
+            <th>憑證名稱</th><th>類型</th><th>往來對象</th>
+            <th style="text-align:right">未稅(NTD)</th><th style="text-align:right">含稅(NTD)</th>
+            <th style="text-align:right">應納稅額</th><th>結果</th><th>操作</th>
+          </tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="empty"><span class="ei">📭</span>尚無記錄</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ch blue">📖 稅率參考 ＆ 說明</div>
+    <div class="cb">
+      <table class="ref">
+        <thead><tr><th>稅目</th><th>適用憑證</th><th>稅率</th><th>最低稅額</th></tr></thead>
+        <tbody>
+          <tr><td><b>銀錢收據</b></td><td>收據、收款單（金額＞100元）</td><td style="font-weight:700;color:var(--bd)">4‰</td><td>NT$12</td></tr>
+          <tr><td><b>買賣動產</b></td><td>動產買賣合約（載明金額）</td><td style="font-weight:700;color:var(--bd)">1‰</td><td>NT$12</td></tr>
+          <tr><td><b>承攬契據</b></td><td>工程、勞務、委加工合約</td><td style="font-weight:700;color:var(--bd)">1‰</td><td>NT$12</td></tr>
+          <tr><td><b>不動產契據</b></td><td>典賣、讓與、分割不動產</td><td style="font-weight:700;color:var(--bd)">1‰</td><td>NT$12</td></tr>
+        </tbody>
+      </table>
+      <div class="callout" style="margin-top:10px;font-size:.78rem">
+        <b>金額三段說明：</b>印花稅以憑證所載金額為準。合約明確載明含稅總額（最常見），選「含稅金額」為計稅基礎；僅載未稅金額，選「未稅金額」。銀錢收據≤100元免稅。
+      </div>
+      <div class="callout or" style="font-size:.78rem;margin-top:6px">
+        ✏️ 如記錄有誤，點擊 <b>✏️</b> 按鈕進入修改模式；修改後系統自動比對欄位差異並記錄歷程。<br>
+        📋 點擊 <b>📋</b> 可查看完整修改歷程（含建立時快照及每次修改明細）。
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+if(typeof pdfjsLib!=='undefined')
+  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+let selT=null,records=[],lastRes=null,editingId=null;
+try{records=JSON.parse(localStorage.getItem('sdr2')||'[]');}catch(e){}
+
+const TI={
+  receipt:   {label:'銀錢收據',       rate:.004,icon:'🧾'},
+  movable:   {label:'買賣動產契據',    rate:.001,icon:'📦'},
+  contract:  {label:'承攬契據',       rate:.001,icon:'🔨'},
+  realestate:{label:'典賣/讓與不動產', rate:.001,icon:'🏠'},
+};
+
+// ── Diff helpers ──────────────────────────────────────────────────
+const DIFF_FIELDS=[
+  {key:'typeLabel',    label:'憑證類型'},
+  {key:'contractNo',   label:'合約編號'},
+  {key:'docName',      label:'憑證名稱'},
+  {key:'docDate',      label:'書立日期'},
+  {key:'contractStart',label:'合約起始日'},
+  {key:'contractEnd',  label:'合約到期日'},
+  {key:'currency',     label:'幣別'},
+  {key:'rawAmt',       label:'原始金額',      fmt:v=>v!=null?String(v):''},
+  {key:'rate',         label:'匯率',          fmt:v=>v!=null&&v!==1?String(v):'1'},
+  {key:'preNTD',       label:'未稅金額(NTD)', fmt:v=>'NT$ '+Math.round(v||0).toLocaleString()},
+  {key:'vatNTD',       label:'營業稅(NTD)',   fmt:v=>'NT$ '+Math.round(v||0).toLocaleString()},
+  {key:'totalNTD',     label:'含稅金額(NTD)', fmt:v=>'NT$ '+Math.round(v||0).toLocaleString()},
+  {key:'taxBase',      label:'計稅基礎',      fmt:v=>v==='total'?'含稅金額':'未稅金額'},
+  {key:'effNTD',       label:'計稅金額(NTD)', fmt:v=>'NT$ '+Math.round(v||0).toLocaleString()},
+  {key:'taxAmt',       label:'應納稅額(NTD)', fmt:v=>'NT$ '+(v||0).toLocaleString()},
+  {key:'status',       label:'結果',          fmt:v=>v==='taxable'?'應稅':'免稅'},
+  {key:'remarks',      label:'備註'},
+];
+function diffRecords(oldR,newR){
+  const changes=[];
+  DIFF_FIELDS.forEach(f=>{const fmt=f.fmt||(v=>String(v||''));const ov=fmt(oldR[f.key]),nv=fmt(newR[f.key]);if(ov!==nv)changes.push({field:f.label,from:ov||'（空）',to:nv||'（空）'});});
+  const op=(oldR.parties||[]).map(p=>p.role+'：'+p.name).join('、');
+  const np=(newR.parties||[]).map(p=>p.role+'：'+p.name).join('、');
+  if(op!==np)changes.push({field:'往來對象',from:op||'（空）',to:np||'（空）'});
+  return changes;
+}
+function makeSnapshot(r){
+  return{
+    '合約編號':r.contractNo||'',
+    '憑證名稱':r.docName||'',
+    '憑證類型':r.typeLabel||'',
+    '書立日期':r.docDate||'',
+    '合約期間':(r.contractStart||'—')+' 至 '+(r.contractEnd||'—'),
+    '往來對象':(r.parties||[]).map(p=>p.role+'：'+p.name).join('、')||'',
+    '幣別':r.currency||'',
+    '未稅金額(NTD)':'NT$ '+Math.round(r.preNTD||0).toLocaleString(),
+    '營業稅(NTD)':'NT$ '+Math.round(r.vatNTD||0).toLocaleString(),
+    '含稅金額(NTD)':'NT$ '+Math.round(r.totalNTD||0).toLocaleString(),
+    '計稅基礎':r.taxBase==='total'?'含稅金額':'未稅金額',
+    '應納稅額(NTD)':'NT$ '+(r.taxAmt||0).toLocaleString(),
+    '結果':r.status==='taxable'?'應稅':'免稅',
+    '備註':r.remarks||'',
+  };
+}
+
+// ── Type detection ────────────────────────────────────────────────
+const DET=[
+  {t:'realestate',w:3,k:['不動產','土地','房屋','建物','讓與','典賣','地號','建號','地籍','坪數','產權','過戶']},
+  {t:'contract',  w:2,k:['承攬','工程','施工','維修','安裝','承包','加工','勞務','委託服務','工作報酬','完工']},
+  {t:'movable',   w:2,k:['買賣','採購','動產','購買','訂購','商品','設備','機器','貨物','採購合約','購置']},
+  {t:'receipt',   w:2,k:['收據','收款','收訖','茲收到','已收','款項收訖','收款通知','receipt']},
+];
+function detectType(text){
+  const sc={realestate:0,contract:0,movable:0,receipt:0},kw={realestate:[],contract:[],movable:[],receipt:[]};
+  DET.forEach(r=>r.k.forEach(k=>{if(text.includes(k)){sc[r.t]+=r.w;kw[r.t].push(k);}}));
+  if(sc.realestate>0)sc.movable=Math.max(0,sc.movable-3);
+  const max=Math.max(...Object.values(sc));
+  if(max===0)return{type:null,kws:[]};
+  const winner=Object.entries(sc).find(([,v])=>v===max)[0];
+  return{type:winner,kws:kw[winner].slice(0,5)};
+}
+const PARTY_ROLES=[
+  {role:'甲方',patterns:[/甲\s*方\s*[（(（]?委?託?人?[）)）]?\s*[：:]\s*([^\n，,。；：:「」（(）)]{2,30})/,/立合約書人甲方\s*[：:]?\s*([^\n，,。；：:「」（(）)]{2,30})/,/一\s*[、,]\s*甲\s*方\s*[：:]\s*([^\n，,。；：:「」（(）)]{2,30})/]},
+  {role:'乙方',patterns:[/乙\s*方\s*[（(（]?受?託?人?[）)）]?\s*[：:]\s*([^\n，,。；：:「」（(）)]{2,30})/,/立合約書人乙方\s*[：:]?\s*([^\n，,。；：:「」（(）)]{2,30})/,/二\s*[、,]\s*乙\s*方\s*[：:]\s*([^\n，,。；：:「」（(）)]{2,30})/]},
+  {role:'丙方',patterns:[/丙\s*方\s*[：:]\s*([^\n，,。；：:「」（(）)]{2,30})/,/立合約書人丙方\s*[：:]?\s*([^\n，,。；：:「」（(）)]{2,30})/]},
+  {role:'丁方',patterns:[/丁\s*方\s*[：:]\s*([^\n，,。；：:「」（(）)]{2,30})/]},
+];
+function cleanName(raw){let n=raw.trim();n=n.replace(/[（(（][^）)）]*[）)）]/g,'').trim();n=n.split(/[,，。；：:\s]/)[0].trim();n=n.replace(/[「」【】]/g,'').trim();return n.length>=2&&n.length<=30?n:null;}
+function detectParties(text){const result=[];PARTY_ROLES.forEach(({role,patterns})=>{for(const pat of patterns){const m=text.match(pat);if(m){const name=cleanName(m[1]);if(name){result.push({role,name});break;}}}});return result;}
+
+// ── File upload ───────────────────────────────────────────────────
+function dOver(e){e.preventDefault();document.getElementById('uz').classList.add('drag');}
+function dLeave(){document.getElementById('uz').classList.remove('drag');}
+function dDrop(e){e.preventDefault();document.getElementById('uz').classList.remove('drag');if(e.dataTransfer.files[0])processFile(e.dataTransfer.files[0]);}
+function onFile(e){if(e.target.files[0])processFile(e.target.files[0]);}
+async function processFile(file){
+  const uz=document.getElementById('uz'),prog=document.getElementById('prog'),progf=document.getElementById('progf'),
+    spin=document.getElementById('spinRow'),ab=document.getElementById('ab'),
+    pb=document.getElementById('partyBox'),imgPrev=document.getElementById('imgPrev');
+  ab.style.display='none';pb.style.display='none';imgPrev.style.display='none';uz.classList.remove('ok');
+  document.querySelectorAll('.tbtn .abadge').forEach(b=>b.remove());
+  document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('auto'));
+  const ext=file.name.split('.').pop().toLowerCase();
+  document.getElementById('uzTxt').textContent='📄 '+file.name;
+  prog.style.display='block';progf.style.width='10%';spin.style.display='flex';
+  let text='',isImg=false;
+  try{
+    if(ext==='pdf'){document.getElementById('spinTxt').textContent='解析 PDF 內容…';progf.style.width='30%';text=await extractPDF(file);progf.style.width='85%';}
+    else if(['docx','doc'].includes(ext)){document.getElementById('spinTxt').textContent='解析 Word 文件…';progf.style.width='30%';text=await extractDocx(file);progf.style.width='85%';}
+    else if(['jpg','jpeg','png'].includes(ext)){isImg=true;document.getElementById('spinTxt').textContent='載入圖片…';progf.style.width='60%';await showImg(file);progf.style.width='100%';}
+    progf.style.width='100%';spin.style.display='none';uz.classList.add('ok');
+    if(isImg){showAB('info','📷 已顯示圖片預覽','圖片格式無法自動辨識文字，請手動選擇類型及填寫往來對象');}
+    else if(text.trim().length<30){showAB('warn','⚠️ 可辨識文字過少','可能為掃描圖片型 PDF，請手動選擇類型及填寫往來對象');}
+    else{
+      const{type,kws}=detectType(text);const parties=detectParties(text);
+      if(type){showAB('ok','✅ 偵測到「'+TI[type].label+'」','關鍵詞：'+kws.join('、')+' ｜ 已自動選擇稅目');autoSelType(type);}
+      else{showAB('warn','⚠️ 無法自動辨識稅目','未偵測到明確關鍵詞，請手動選擇憑證類型');}
+      if(parties.length>0)fillParties(parties);
+    }
+  }catch(err){console.error(err);spin.style.display='none';showAB('warn','⚠️ 解析失敗',err.message||'請確認文件格式正確');}
+  finally{setTimeout(()=>{prog.style.display='none';progf.style.width='0%';},700);}
+}
+function showAB(type,title,detail){const ab=document.getElementById('ab');ab.className='ab '+type+' fi';ab.style.display='block';document.getElementById('abt').textContent=title;document.getElementById('abd').textContent=detail;}
+function showImg(file){return new Promise(res=>{const r=new FileReader();r.onload=e=>{document.getElementById('imgPrev').src=e.target.result;document.getElementById('imgPrev').style.display='block';res();};r.readAsDataURL(file);});}
+async function extractPDF(file){
+  if(typeof pdfjsLib==='undefined')throw new Error('PDF.js 未載入');
+  const ab=await file.arrayBuffer();const pdf=await pdfjsLib.getDocument({data:ab}).promise;
+  let t='';for(let i=1;i<=Math.min(pdf.numPages,6);i++){const pg=await pdf.getPage(i);const ct=await pg.getTextContent();t+=ct.items.map(x=>x.str).join(' ')+'\n';}return t;
+}
+async function extractDocx(file){
+  if(typeof mammoth==='undefined')throw new Error('mammoth.js 未載入');
+  const ab=await file.arrayBuffer();const r=await mammoth.extractRawText({arrayBuffer:ab});return r.value;
+}
+
+// ── Parties ───────────────────────────────────────────────────────
+function fillParties(parties){
+  const cplist=document.getElementById('cplist');cplist.innerHTML='';
+  parties.slice(0,4).forEach(({role,name})=>{
+    const row=document.createElement('div');row.className='cprow fi';const isFirst=cplist.children.length===0;
+    row.innerHTML=`<select class="cprole"><option${role==='甲方'?' selected':''}>甲方</option><option${role==='乙方'?' selected':''}>乙方</option><option${role==='丙方'?' selected':''}>丙方</option><option${role==='丁方'?' selected':''}>丁方</option><option>其他</option></select><input type="text" class="cpinput" value="${esc(name)}" placeholder="公司或個人名稱">${!isFirst?'<button class="cpdel" onclick="delCP(this)">✕</button>':''}`;
+    cplist.appendChild(row);
+  });
+  if(cplist.children.length===0)cplist.innerHTML=blankCPRow();
+  updCPcnt();
+  document.getElementById('partyBox').style.display='block';
+  document.getElementById('partyTags').innerHTML=parties.slice(0,4).map(p=>`<span class="party-tag">🏢 ${p.role}：${esc(p.name)}</span>`).join('');
+}
+function selType(type,btn){selT=type;document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');hideResult();}
+function autoSelType(type){
+  selT=type;document.querySelectorAll('.tbtn').forEach(b=>{b.classList.remove('active','auto');b.querySelector('.abadge')?.remove();});
+  const btn=document.querySelector('.tbtn[data-type="'+type+'"]');
+  if(btn){btn.classList.add('active','auto');const badge=document.createElement('span');badge.className='abadge';badge.textContent='AI偵測';btn.appendChild(badge);}
+}
+function blankCPRow(){return`<div class="cprow"><select class="cprole"><option>甲方</option><option>乙方</option><option>丙方</option><option>丁方</option><option>其他</option></select><input type="text" class="cpinput" placeholder="公司或個人名稱"></div>`;}
+function addCP(){
+  const list=document.getElementById('cplist');if(list.querySelectorAll('.cprow').length>=4)return;
+  const row=document.createElement('div');row.className='cprow fi';const idx=list.querySelectorAll('.cprow').length+1;
+  row.innerHTML=`<select class="cprole"><option>甲方</option><option>乙方</option><option>丙方</option><option>丁方</option><option>其他</option></select><input type="text" class="cpinput" placeholder="第${idx}位往來對象"><button class="cpdel" onclick="delCP(this)">✕</button>`;
+  list.appendChild(row);updCPcnt();
+}
+function delCP(btn){btn.closest('.cprow').remove();updCPcnt();}
+function updCPcnt(){const n=document.getElementById('cplist').querySelectorAll('.cprow').length;document.getElementById('cpcnt').textContent='目前 '+n+' 個往來對象（最多4個）';document.getElementById('cpadd').disabled=n>=4;}
+function getCPs(){return Array.from(document.querySelectorAll('.cprow')).map(r=>({role:r.querySelector('.cprole').value,name:r.querySelector('.cpinput').value.trim()})).filter(p=>p.name);}
+
+// ── Amount ────────────────────────────────────────────────────────
+function calcAmt(){
+  const cur=document.getElementById('currency').value;
+  const pre=parseFloat(document.getElementById('amtPre').value)||0;
+  const rate=cur!=='TWD'?(parseFloat(document.getElementById('rate').value)||1):1;
+  const preNTD=pre*rate,vat=preNTD*.05,total=preNTD+vat;
+  if(pre>0){document.getElementById('amtVat').value=vat.toFixed(0);document.getElementById('amtTotal').value=total.toFixed(0);}
+  else{document.getElementById('amtVat').value='';document.getElementById('amtTotal').value='';}
+  const base=document.querySelector('input[name="taxBase"]:checked').value,eff=base==='total'?total:preNTD;
+  const eb=document.getElementById('effAmtBox');
+  if(pre>0){eb.style.display='block';document.getElementById('effAmtVal').textContent='NT$ '+Math.round(eff).toLocaleString();}
+  else eb.style.display='none';
+}
+function updCur(){const cur=document.getElementById('currency').value;document.getElementById('rateRow').style.display=cur!=='TWD'?'block':'none';document.getElementById('otherCurRow').style.display=cur==='OTHER'?'block':'none';calcAmt();}
+
+// ── Expiry ────────────────────────────────────────────────────────
+function getToday(){const d=new Date();d.setHours(0,0,0,0);return d;}
+function daysUntil(dateStr){if(!dateStr)return null;const end=new Date(dateStr);end.setHours(0,0,0,0);return Math.ceil((end-getToday())/864e5);}
+function getExpiring(){return records.filter(r=>{if(!r.contractEnd)return false;const d=daysUntil(r.contractEnd);return d!==null&&d<=60;}).sort((a,b)=>new Date(a.contractEnd)-new Date(b.contractEnd));}
+function showExpiryModal(){
+  const list=getExpiring(),el=document.getElementById('expiryList');
+  if(!list.length){el.innerHTML='<p style="padding:20px;color:#888;text-align:center">目前沒有60天內到期的合約 ✅</p>';}
+  else{el.innerHTML=list.map(r=>{const d=daysUntil(r.contractEnd);const isPast=d<0,isCrit=d<=30&&!isPast;const cls=isPast?'past':isCrit?'crit':'warn';const dayTxt=isPast?`已逾期 ${Math.abs(d)} 天`:`還有 ${d} 天`;const cpStr=(r.parties||[]).map(p=>p.role+'：'+p.name).join('、')||'—';return`<div class="exp-item fi"><div class="exp-item-head"><span class="exp-item-no">${esc(r.contractNo||'（無編號）')}</span><span class="exp-days ${cls}">${dayTxt}</span></div><div class="exp-item-name">${esc(r.docName||'（無名稱）')}</div><div class="exp-item-info">對象：${esc(cpStr)}<br>到期日：${r.contractEnd}</div></div>`;}).join('');}
+  document.getElementById('expiryOverlay').classList.add('show');
+}
+function closeExpiryModal(){document.getElementById('expiryOverlay').classList.remove('show');}
+function updExpiryBell(){
+  const n=getExpiring().length;const bell=document.getElementById('expiryBell');
+  bell.style.display=n>0?'flex':'none';document.getElementById('bellCount').textContent=n;
+  document.getElementById('sExpiry').textContent=n;
+  const sc=document.getElementById('scExpiry');n>0?sc.classList.add('blink'):sc.classList.remove('blink');
+}
+
+// ── History modal ─────────────────────────────────────────────────
+function showHistory(id){
+  const r=records.find(rec=>rec.id===id);if(!r)return;
+  document.getElementById('histSubtitle').textContent='合約編號：'+(r.contractNo||'（無編號）') + '　憑證名稱：'+(r.docName||'—');
+  const hist=r.history||[];
+  if(!hist.length){document.getElementById('histTimeline').innerHTML='<p style="padding:20px;color:#aaa;font-size:.82rem;text-align:center">尚無歷程記錄（舊版本資料）</p>';document.getElementById('histOverlay').classList.add('show');return;}
+  const entries=[...hist].reverse();
+  document.getElementById('histTimeline').innerHTML=entries.map((h,i)=>{
+    const isLatest=i===0,showConn=i<entries.length-1;
+    const dot=h.action==='created'?'created':'modified';
+    const latestTag=isLatest?'<span class="hist-latest">最新</span>':'';
+    const actionBadge=h.action==='created'?'<span class="hist-action-badge created">✨ 建立</span>':'<span class="hist-action-badge modified">✏️ 修改</span>';
+    let body='';
+    if(h.action==='created'&&h.snapshot){
+      body='<div class="hist-snapshot">'+Object.entries(h.snapshot).filter(([,v])=>v).map(([k,v])=>`<div class="snap-row"><div class="snap-k">${k}</div><div class="snap-v">${esc(v)}</div></div>`).join('')+'</div>';
+    }else if(h.action==='modified'&&h.changes&&h.changes.length){
+      body='<div class="hist-changes">'+h.changes.map(c=>`<div class="hist-change"><div class="hist-field">${c.field}</div><div class="hist-vals"><span class="hist-from">${esc(c.from)}</span><span class="hist-to">→ ${esc(c.to)}</span></div></div>`).join('')+'</div>';
+    }else{body='<div class="no-changes">（無欄位變更）</div>';}
+    return`<div class="hist-entry"><div class="hist-line"><div class="hist-dot ${dot}"></div>${showConn?'<div class="hist-connector"></div>':''}</div><div class="hist-content"><div class="hist-header"><span class="hist-time">${h.time}</span>${actionBadge}${latestTag}</div>${body}</div></div>`;
+  }).join('');
+  document.getElementById('histOverlay').classList.add('show');
+}
+function closeHistModal(){document.getElementById('histOverlay').classList.remove('show');}
+
+// ══ Edit mode ══════════════════════════════════════════════════════
+function startEdit(id){
+  const r=records.find(rec=>rec.id===id);if(!r)return;
+  if(editingId&&editingId!==id&&!confirm('您正在修改另一筆記錄，確定要切換？'))return;
+  editingId=id;
+
+  // Type
+  selT=r.type;
+  document.querySelectorAll('.tbtn').forEach(b=>{b.classList.remove('active','auto');b.querySelector('.abadge')?.remove();});
+  document.querySelector('.tbtn[data-type="'+r.type+'"]')?.classList.add('active');
+
+  // Text fields
+  ['contractNo','docName','docDate','contractStart','contractEnd','remarks'].forEach(fid=>{document.getElementById(fid).value=r[fid]||'';});
+
+  // Counterparties
+  const cplist=document.getElementById('cplist');cplist.innerHTML='';
+  (r.parties||[]).forEach(({role,name},i)=>{
+    const row=document.createElement('div');row.className='cprow';
+    row.innerHTML=`<select class="cprole"><option${role==='甲方'?' selected':''}>甲方</option><option${role==='乙方'?' selected':''}>乙方</option><option${role==='丙方'?' selected':''}>丙方</option><option${role==='丁方'?' selected':''}>丁方</option><option${role==='其他'?' selected':''}>其他</option></select><input type="text" class="cpinput" value="${esc(name)}" placeholder="公司或個人名稱">${i>0?'<button class="cpdel" onclick="delCP(this)">✕</button>':''}`;
+    cplist.appendChild(row);
+  });
+  if(!cplist.children.length)cplist.innerHTML=blankCPRow();
+  updCPcnt();
+
+  // Currency (use stored code for accurate restore)
+  const code=r.currencyCode||(['TWD','USD','EUR','JPY','CNY','HKD','PHP'].includes(r.currency)?r.currency:'OTHER');
+  document.getElementById('currency').value=code;
+  document.getElementById('rateRow').style.display=code!=='TWD'?'block':'none';
+  document.getElementById('otherCurRow').style.display=code==='OTHER'?'block':'none';
+  if(code==='OTHER')document.getElementById('otherCurName').value=r.otherCurNameStored||r.currency||'';
+  if(r.rate&&code!=='TWD')document.getElementById('rate').value=r.rate;
+  else if(code==='TWD')document.getElementById('rate').value='';
+
+  // Amount & tax base
+  document.getElementById('amtPre').value=r.rawAmt||'';
+  document.querySelector('input[name="taxBase"][value="'+(r.taxBase||'total')+'"]').checked=true;
+  calcAmt();
+
+  // Exemptions
+  ['ex1','ex2','ex3','ex4','ex5','ex6'].forEach(eid=>{document.getElementById(eid).checked=(r.exemptions||[]).includes(eid);});
+
+  // UI
+  document.getElementById('editBanner').style.display='block';
+  document.getElementById('editBannerNo').textContent=r.contractNo||'（無編號）';
+  document.getElementById('saveBtn').textContent='✏️ 更新記錄';
+  document.getElementById('saveBtn').className='btn btn-w btn-sm';
+  hideResult();
+  document.querySelector('.card').scrollIntoView({behavior:'smooth',block:'start'});
+  renderTbl();
+}
+
+function cancelEdit(){
+  editingId=null;
+  document.getElementById('editBanner').style.display='none';
+  document.getElementById('saveBtn').textContent='➕ 加入記錄';
+  document.getElementById('saveBtn').className='btn btn-s btn-sm';
+  renderTbl();
+}
+
+// ── Validate ──────────────────────────────────────────────────────
+function validate(){
+  document.querySelectorAll('.err').forEach(e=>e.classList.remove('err'));
+  const errors=[];
+  if(!selT)errors.push('請選擇憑證類型');
+  const cn=document.getElementById('contractNo');if(!cn.value.trim()){cn.classList.add('err');errors.push('請填寫合約編號');}
+  const dd=document.getElementById('docDate');if(!dd.value){dd.classList.add('err');errors.push('請填寫書立/取得日期');}
+  if(!getCPs().length){document.querySelectorAll('.cpinput').forEach(i=>i.classList.add('err'));errors.push('請填寫至少一個往來對象');}
+  const pre=parseFloat(document.getElementById('amtPre').value);if(!pre||pre<=0){document.getElementById('amtPre').classList.add('err');errors.push('請填寫未稅金額');}
+  const cur=document.getElementById('currency').value;
+  if(cur!=='TWD'){const rv=parseFloat(document.getElementById('rate').value);if(!rv||rv<=0){document.getElementById('rate').classList.add('err');errors.push('請填寫匯率');}}
+  if(errors.length){alert('請確認以下必填欄位：\n\n• '+errors.join('\n• '));return false;}
+  return true;
+}
+
+// ── Calculate ─────────────────────────────────────────────────────
+function calc(){
+  if(!validate())return;
+  const cur=document.getElementById('currency').value;
+  const otherCur=document.getElementById('otherCurName').value.trim();
+  const dispCur=cur==='OTHER'?(otherCur||'其他'):cur;
+  const pre=parseFloat(document.getElementById('amtPre').value);
+  const rate=cur!=='TWD'?(parseFloat(document.getElementById('rate').value)||1):1;
+  const preNTD=pre*rate,vatNTD=preNTD*.05,totalNTD=preNTD+vatNTD;
+  const taxBase=document.querySelector('input[name="taxBase"]:checked').value;
+  const effNTD=taxBase==='total'?totalNTD:preNTD;
+  const cps=getCPs();
+  const exemptIds=['ex1','ex2','ex3','ex4','ex5','ex6'].filter(id=>document.getElementById(id).checked);
+  const ti=TI[selT];
+  let status,taxAmt,reasons;
+  if(exemptIds.length){status='exempt';taxAmt=0;reasons=['符合印花稅法第 6 條免稅規定'];}
+  else if(selT==='receipt'&&effNTD<=100){status='exempt';taxAmt=0;reasons=['銀錢收據金額未逾 100 元，依法免納（§5）'];}
+  else{status='taxable';taxAmt=Math.max(12,Math.round(effNTD*ti.rate));reasons=[];}
+  lastRes={
+    type:selT,typeLabel:ti.label,
+    contractNo:document.getElementById('contractNo').value.trim(),
+    docName:document.getElementById('docName').value.trim(),
+    docDate:document.getElementById('docDate').value,
+    contractStart:document.getElementById('contractStart').value,
+    contractEnd:document.getElementById('contractEnd').value,
+    parties:cps,currencyCode:cur,otherCurNameStored:otherCur,currency:dispCur,
+    rawAmt:pre,rate,preNTD,vatNTD,totalNTD,taxBase,effNTD,taxRate:ti.rate,
+    status,taxAmt,reasons,exemptions:exemptIds,
+    remarks:document.getElementById('remarks').value.trim(),
+    calcTime:new Date().toLocaleString('zh-TW'),
+  };
+  showResult(lastRes);
+}
+
+function showResult(r){
+  const rp=document.getElementById('rp'),rt=document.getElementById('rt'),rb=document.getElementById('rb');
+  rp.className='rp fi '+(r.status==='taxable'?'tax':'ex');rp.style.display='block';
+  const cpStr=r.parties.map(p=>p.role+'：'+p.name).join('、');
+  const baseLabel=r.taxBase==='total'?'含稅金額':'未稅金額';
+  const periodStr=(r.contractStart||r.contractEnd)?(r.contractStart||'—')+' 至 '+(r.contractEnd||'—'):'—';
+  const editNote=editingId?'<div style="background:var(--ol);border-radius:6px;padding:5px 10px;font-size:.75rem;color:var(--od);margin-bottom:8px">✏️ 修改模式：確認後請點擊「✏️ 更新記錄」</div>':'';
+  if(r.status==='taxable'){
+    rt.innerHTML='<span class="badge bt">🔴 應課印花稅</span>';
+    rb.innerHTML=editNote+`<div class="ra">NT$ ${r.taxAmt.toLocaleString()}</div>
+      <div class="rd"><table>
+        <tr><td>合約編號</td><td>${esc(r.contractNo)}</td></tr>
+        <tr><td>往來對象</td><td>${esc(cpStr)}</td></tr>
+        <tr><td>合約期間</td><td>${periodStr}</td></tr>
+        <tr><td>憑證類型</td><td>${TI[r.type].icon} ${r.typeLabel}</td></tr>
+        <tr><td>幣別</td><td>${r.currency}</td></tr>
+        <tr><td>①未稅金額(NTD)</td><td>NT$ ${Math.round(r.preNTD).toLocaleString()}</td></tr>
+        <tr><td>②營業稅(5%)</td><td>NT$ ${Math.round(r.vatNTD).toLocaleString()}</td></tr>
+        <tr><td>③含稅金額(NTD)</td><td>NT$ ${Math.round(r.totalNTD).toLocaleString()}</td></tr>
+        <tr><td>計稅基礎</td><td>${baseLabel}＝NT$ ${Math.round(r.effNTD).toLocaleString()}</td></tr>
+        <tr><td>適用稅率</td><td>${r.taxRate*1000}‰</td></tr>
+        <tr><td>計算稅額</td><td>NT$ ${(r.effNTD*r.taxRate).toFixed(2)}</td></tr>
+        <tr style="font-weight:700;color:var(--bd)"><td>應納稅額</td><td>NT$ ${r.taxAmt.toLocaleString()}</td></tr>
+      </table></div>`;
+  }else{
+    rt.innerHTML='<span class="badge be">✅ 免納印花稅</span>';
+    rb.innerHTML=editNote+`<div style="font-size:.82rem;margin-top:4px">
+      <b>免稅原因：</b>${r.reasons.join('；')}<br>
+      <span style="color:#555;font-size:.78rem;margin-top:5px;display:block">
+        往來對象：${esc(cpStr)} ｜ 合約編號：${esc(r.contractNo)}<br>合約期間：${periodStr}
+      </span></div>`;
+  }
+}
+function hideResult(){document.getElementById('rp').style.display='none';lastRes=null;}
+
+// ── Save / update ─────────────────────────────────────────────────
+function saveOrUpdate(){editingId?updateRec():addRec();}
+
+function addRec(){
+  if(!lastRes)return;
+  records.unshift({...lastRes,id:Date.now(),history:[{time:lastRes.calcTime,action:'created',snapshot:makeSnapshot(lastRes),changes:[]}]});
+  saveRec();renderTbl();updStats();updExpiryBell();
+  let msg='✅ 已加入記錄！';
+  if(lastRes.contractEnd){const d=daysUntil(lastRes.contractEnd);if(d!==null&&d<=60)msg+=d<0?'\n\n🔴 注意：此合約已逾到期日！':d<=30?'\n\n🔴 警示：此合約將於 '+d+' 天後到期！':'\n\nℹ️ 此合約將於 '+d+' 天後到期。';}
+  alert(msg);
+}
+
+function updateRec(){
+  if(!lastRes||!editingId)return;
+  const idx=records.findIndex(r=>r.id===editingId);if(idx===-1)return;
+  const oldR=records[idx];
+  const changes=diffRecords(oldR,lastRes);
+  const histEntry={time:new Date().toLocaleString('zh-TW'),action:'modified',changes,snapshot:makeSnapshot(lastRes)};
+  records[idx]={...lastRes,id:editingId,lastModified:new Date().toLocaleString('zh-TW'),
+    history:[...(oldR.history||[{time:oldR.calcTime,action:'created',snapshot:makeSnapshot(oldR),changes:[]}]),histEntry]};
+  saveRec();
+  editingId=null;
+  document.getElementById('editBanner').style.display='none';
+  document.getElementById('saveBtn').textContent='➕ 加入記錄';
+  document.getElementById('saveBtn').className='btn btn-s btn-sm';
+  renderTbl();updStats();updExpiryBell();hideResult();
+  alert('✅ 記錄已更新！'+(changes.length?'\n共修改 '+changes.length+' 個欄位。':'\n（未偵測到欄位變更）'));
+}
+
+function delRec(id){
+  if(!confirm('確定要刪除？'))return;
+  if(editingId===id)cancelEdit();
+  records=records.filter(r=>r.id!==id);saveRec();renderTbl();updStats();updExpiryBell();
+}
+function clearAll(){if(!confirm('確定清除全部記錄？'))return;cancelEdit();records=[];saveRec();renderTbl();updStats();updExpiryBell();}
+function saveRec(){try{localStorage.setItem('sdr2',JSON.stringify(records));}catch(e){}}
+
+// ── Render table ──────────────────────────────────────────────────
+function renderTbl(){
+  const ft=document.getElementById('ft').value,fs=document.getElementById('fs').value,
+    fe=document.getElementById('fe').value,fq=document.getElementById('fq').value.toLowerCase();
+  const filtered=records.filter(r=>{
+    if(ft&&r.type!==ft)return false;if(fs&&r.status!==fs)return false;
+    if(fe){const d=daysUntil(r.contractEnd);if(fe==='exp60'&&(d===null||d>60))return false;if(fe==='exp30'&&(d===null||d>30))return false;}
+    if(fq){const h=[r.contractNo,r.docName,...(r.parties||[]).map(p=>p.name)].join(' ').toLowerCase();if(!h.includes(fq))return false;}
+    return true;
+  });
+  const tbody=document.getElementById('tbody'),empty=document.getElementById('empty');
+  if(!filtered.length){tbody.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  tbody.innerHTML=filtered.map(r=>{
+    const cpStr=(r.parties||[]).map(p=>p.role+'：'+p.name).join('、')||(r.counterparty||'—');
+    const taxStr=r.status==='taxable'?'NT$ '+r.taxAmt.toLocaleString():'免稅';
+    const badge=r.status==='taxable'?'<span class="badge bt">應稅</span>':'<span class="badge be">免稅</span>';
+    let exBadge='',rowCls=r.status==='exempt'?'exrow':'';
+    if(r.contractEnd){const d=daysUntil(r.contractEnd);
+      if(d!==null&&d<0){exBadge='<br><span class="exp-badge expired">已逾期</span>';rowCls='exp-crit';}
+      else if(d!==null&&d<=30){exBadge='<br><span class="exp-badge w30">🔴 '+d+'天到期</span>';rowCls='exp-crit';}
+      else if(d!==null&&d<=60){exBadge='<br><span class="exp-badge w60">🟡 '+d+'天到期</span>';rowCls='exp-warn';}
+    }
+    if(editingId===r.id)rowCls='editing-row';
+    const modCount=(r.history||[]).filter(h=>h.action==='modified').length;
+    const modBadge=modCount>0?`<span class="mod-badge">修改${modCount}次</span>`:'';
+    return`<tr class="${rowCls}">
+      <td>${esc(r.contractNo||'—')}${modBadge}</td>
+      <td style="white-space:nowrap">${r.docDate||'—'}</td>
+      <td style="white-space:nowrap">${r.contractStart||'—'}</td>
+      <td style="white-space:nowrap">${r.contractEnd||'—'}${exBadge}</td>
+      <td>${esc(r.docName||'—')}</td>
+      <td>${TI[r.type]?.icon||''} ${r.typeLabel}</td>
+      <td style="font-size:.73rem">${esc(cpStr)}</td>
+      <td class="am">NT$ ${Math.round(r.preNTD||0).toLocaleString()}</td>
+      <td class="am">NT$ ${Math.round(r.totalNTD||0).toLocaleString()}</td>
+      <td class="am ta">${taxStr}</td>
+      <td>${badge}</td>
+      <td><div class="tact">
+        <button class="iBtn edit" onclick="startEdit(${r.id})" title="修改此記錄">✏️</button>
+        <button class="iBtn hist" onclick="showHistory(${r.id})" title="查看修改歷程">📋</button>
+        <button class="iBtn del"  onclick="delRec(${r.id})" title="刪除">🗑</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function updStats(){
+  const tax=records.filter(r=>r.status==='taxable');
+  document.getElementById('sTotal').textContent=records.length;
+  document.getElementById('sTax').textContent=tax.length;
+  document.getElementById('sEx').textContent=records.filter(r=>r.status==='exempt').length;
+  document.getElementById('sSum').textContent='NT$'+tax.reduce((s,r)=>s+r.taxAmt,0).toLocaleString();
+}
+
+// ── Export Excel ──────────────────────────────────────────────────
+function expXlsx(){
+  if(!records.length){alert('尚無記錄可匯出');return;}
+  const wb=XLSX.utils.book_new();
+  // Sheet1: Records
+  const hdr=['序號','計算時間','最後修改','修改次數','書立日期','合約起始日','合約到期日','合約編號','憑證名稱',
+    '甲方','乙方','丙方','丁方','其他往來對象','憑證類型','幣別',
+    '未稅金額(NTD)','營業稅(NTD)','含稅金額(NTD)','計稅基礎','計稅金額(NTD)',
+    '稅率(‰)','計算稅額','應納稅額','應稅/免稅','到期狀態','備註'];
+  const rows=records.map((r,i)=>{
+    const byRole={};(r.parties||[]).forEach(p=>{if(!byRole[p.role])byRole[p.role]=p.name;});
+    const others=(r.parties||[]).filter(p=>!['甲方','乙方','丙方','丁方'].includes(p.role)).map(p=>p.name).join('、');
+    const modCount=(r.history||[]).filter(h=>h.action==='modified').length;
+    let expSt='';if(r.contractEnd){const d=daysUntil(r.contractEnd);expSt=d===null?'':(d<0?'已逾期':d<=30?`即將到期(${d}天)`:d<=60?`60天內(${d}天)`:'正常');}
+    return[i+1,r.calcTime||'',r.lastModified||'',modCount,r.docDate||'',r.contractStart||'',r.contractEnd||'',
+      r.contractNo||'',r.docName||'',byRole['甲方']||'',byRole['乙方']||'',byRole['丙方']||'',byRole['丁方']||'',others,
+      r.typeLabel,r.currency,Math.round(r.preNTD||0),Math.round(r.vatNTD||0),Math.round(r.totalNTD||0),
+      r.taxBase==='total'?'含稅金額':'未稅金額',Math.round(r.effNTD||0),(r.taxRate||0)*1000,
+      parseFloat(((r.effNTD||0)*(r.taxRate||0)).toFixed(2)),r.status==='taxable'?r.taxAmt:0,
+      r.status==='taxable'?'應稅':'免稅',expSt,r.remarks||''];
+  });
+  const ws1=XLSX.utils.aoa_to_sheet([hdr,...rows]);
+  ws1['!cols']=[{wch:5},{wch:17},{wch:17},{wch:8},{wch:12},{wch:12},{wch:12},{wch:15},{wch:22},
+    {wch:14},{wch:14},{wch:12},{wch:12},{wch:14},{wch:14},{wch:7},{wch:14},{wch:12},{wch:14},
+    {wch:10},{wch:14},{wch:8},{wch:12},{wch:12},{wch:9},{wch:13},{wch:20}];
+  XLSX.utils.book_append_sheet(wb,ws1,'印花稅計算記錄');
+  // Sheet2: History
+  const histRows=[['合約編號','憑證名稱','時間','動作','修改欄位','舊值','新值']];
+  records.forEach(r=>{
+    (r.history||[]).forEach(h=>{
+      if(h.action==='created'){histRows.push([r.contractNo||'',r.docName||'',h.time,'建立','—','—','—']);}
+      else if(h.changes&&h.changes.length){h.changes.forEach(c=>{histRows.push([r.contractNo||'',r.docName||'',h.time,'修改',c.field,c.from,c.to]);});}
+      else{histRows.push([r.contractNo||'',r.docName||'',h.time,'修改','（無欄位變更）','—','—']);}
+    });
+  });
+  const ws2=XLSX.utils.aoa_to_sheet(histRows);
+  ws2['!cols']=[{wch:15},{wch:22},{wch:17},{wch:8},{wch:14},{wch:24},{wch:24}];
+  XLSX.utils.book_append_sheet(wb,ws2,'修改歷程');
+  // Sheet3: Summary
+  const ws3d=[['印花稅統計摘要'],['匯出時間：'+new Date().toLocaleString('zh-TW')],[],
+    ['稅目','記錄筆數','應稅筆數','免稅筆數','應納稅額合計(NTD)'],
+    ...Object.keys(TI).map(t=>{const tr=records.filter(r=>r.type===t&&r.status==='taxable');return[TI[t].label,records.filter(r=>r.type===t).length,tr.length,records.filter(r=>r.type===t&&r.status==='exempt').length,tr.reduce((s,r)=>s+r.taxAmt,0)];}),
+    ['合計',records.length,records.filter(r=>r.status==='taxable').length,records.filter(r=>r.status==='exempt').length,records.filter(r=>r.status==='taxable').reduce((s,r)=>s+r.taxAmt,0)]];
+  const ws3=XLSX.utils.aoa_to_sheet(ws3d);ws3['!cols']=[{wch:18},{wch:12},{wch:12},{wch:12},{wch:20}];
+  XLSX.utils.book_append_sheet(wb,ws3,'統計摘要');
+  XLSX.writeFile(wb,'印花稅計算記錄_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+
+// ── Reset ─────────────────────────────────────────────────────────
+function reset(){
+  if(editingId&&!confirm('正在修改記錄，確定取消並清除？'))return;
+  cancelEdit();selT=null;
+  document.querySelectorAll('.tbtn').forEach(b=>{b.classList.remove('active','auto');b.querySelector('.abadge')?.remove();});
+  ['contractNo','docName','docDate','contractStart','contractEnd','amtPre','rate','remarks','otherCurName'].forEach(id=>{document.getElementById(id).value='';});
+  document.getElementById('amtVat').value='';document.getElementById('amtTotal').value='';
+  document.getElementById('effAmtBox').style.display='none';
+  document.getElementById('currency').value='TWD';updCur();
+  document.querySelector('input[name="taxBase"][value="total"]').checked=true;
+  document.getElementById('cplist').innerHTML=blankCPRow();updCPcnt();
+  ['ex1','ex2','ex3','ex4','ex5','ex6'].forEach(id=>{document.getElementById(id).checked=false;});
+  document.getElementById('uz').classList.remove('ok');
+  document.getElementById('uzTxt').textContent='拖曳或點擊上傳憑證（PDF / JPG / PNG / DOCX）';
+  document.getElementById('fi').value='';
+  ['ab','partyBox','imgPrev'].forEach(id=>{document.getElementById(id).style.display='none';});
+  document.querySelectorAll('.err').forEach(e=>e.classList.remove('err'));
+  hideResult();
+}
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+['expiryOverlay','histOverlay'].forEach(id=>{document.getElementById(id).addEventListener('click',function(e){if(e.target===this)this.classList.remove('show');});});
+
+(function(){
+  document.getElementById('docDate').value=new Date().toISOString().slice(0,10);
+  renderTbl();updStats();updExpiryBell();
+  if(getExpiring().length)setTimeout(showExpiryModal,900);
+})();
+</script>
+</body>
+</html>
